@@ -345,4 +345,10 @@ export type VideoSettings = {
   camera?: 'front' | 'rear'
   prompt?: string
   template_id?: string
+  // Creative Studio additions
+  audio_url?: string
+  audio_name?: string
+  overlay_style?: string
+  text_overlay?: string
+  text_style?: string
 }

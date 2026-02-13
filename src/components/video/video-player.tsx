@@ -12,6 +12,7 @@ interface VideoPlayerProps {
   muted?: boolean
   className?: string
   showControls?: boolean
+  audioSrc?: string
 }
 
 export function VideoPlayer({
@@ -22,15 +23,29 @@ export function VideoPlayer({
   muted = true,
   className,
   showControls = true,
+  audioSrc,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(autoPlay)
   const [isMuted, setIsMuted] = useState(muted)
   const [progress, setProgress] = useState(0)
   const [videoError, setVideoError] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    if (audioSrc) {
+      audioRef.current = new Audio(audioSrc)
+      audioRef.current.loop = loop
+    }
+    return () => {
+      audioRef.current?.pause()
+      audioRef.current = null
+    }
+  }, [audioSrc, loop])
 
   useEffect(() => {
     const video = videoRef.current
+    const audio = audioRef.current
     if (!video) return
 
     const handleTimeUpdate = () => {
@@ -38,25 +53,33 @@ export function VideoPlayer({
       setProgress(progress)
     }
 
-    const handlePlay = () => setIsPlaying(true)
-    const handlePause = () => setIsPlaying(false)
-    const handleError = () => setVideoError(true)
-    const handleCanPlay = () => setVideoError(false)
+    const handlePlay = () => {
+      setIsPlaying(true)
+      if (audio) {
+        audio.currentTime = video.currentTime
+        audio.play()
+      }
+    }
+    const handlePause = () => {
+      setIsPlaying(false)
+      audio?.pause()
+    }
+    const handleSeeking = () => {
+      if (audio) audio.currentTime = video.currentTime
+    }
 
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('play', handlePlay)
     video.addEventListener('pause', handlePause)
-    video.addEventListener('error', handleError)
-    video.addEventListener('canplay', handleCanPlay)
+    video.addEventListener('seeking', handleSeeking)
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('play', handlePlay)
       video.removeEventListener('pause', handlePause)
-      video.removeEventListener('error', handleError)
-      video.removeEventListener('canplay', handleCanPlay)
+      video.removeEventListener('seeking', handleSeeking)
     }
-  }, [])
+  }, [audioSrc])
 
   // Reset error state when src changes
   useEffect(() => {

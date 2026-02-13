@@ -12,6 +12,11 @@ interface StartGenerationBody {
     intensity: Intensity
     templateId?: string
     inputAssetUrl?: string
+    // Creative Studio fields
+    audioId?: string
+    overlayId?: string
+    textOverlay?: string
+    textStyleId?: string
 }
 
 // Credits are disabled — all generations are free
@@ -63,6 +68,10 @@ export async function POST(request: Request) {
                     style: body.style,
                     aspect_ratio: body.aspectRatio,
                     intensity: body.intensity,
+                    audio_id: body.audioId,
+                    overlay_id: body.overlayId,
+                    text_overlay: body.textOverlay,
+                    text_style_id: body.textStyleId,
                 },
             })
             .select()

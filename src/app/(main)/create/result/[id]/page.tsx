@@ -19,6 +19,7 @@ import {
   Sparkles,
   Wand2,
 } from 'lucide-react'
+import { AUDIOS, OVERLAYS, TEXT_STYLES } from '@/lib/creative-studio'
 
 export default function ResultPage() {
   const params = useParams()
@@ -29,6 +30,12 @@ export default function ResultPage() {
   const [hashtags, setHashtags] = useState('')
   const [isPublishing, setIsPublishing] = useState(false)
   const [showShareSheet, setShowShareSheet] = useState(false)
+
+  // Get creative settings from JSONB
+  const settings = generation?.settings as any || {}
+  const audioAsset = AUDIOS.find(a => a.id === settings.audio_id)
+  const overlayAsset = OVERLAYS.find(o => o.id === settings.overlay_id)
+  const textStyle = TEXT_STYLES.find(t => t.id === settings.text_style_id)
 
   useEffect(() => {
     async function fetchGeneration() {
@@ -167,15 +174,27 @@ export default function ResultPage() {
         </div>
       </div>
 
-      {/* Video */}
-      <div className="aspect-[9/16] max-h-[60vh] bg-gray-900">
+      {/* Video with Creative Studio Overlays */}
+      <div className={`aspect-[9/16] max-h-[60vh] bg-gray-900 relative ${overlayAsset?.className || ''}`}>
         {generation.output_video_url && (
-          <VideoPlayer
-            src={generation.output_video_url}
-            poster={generation.thumbnail_url || undefined}
-            autoPlay
-            className="w-full h-full"
-          />
+          <>
+            <VideoPlayer
+              src={generation.output_video_url}
+              poster={generation.thumbnail_url || undefined}
+              autoPlay
+              className="w-full h-full"
+              audioSrc={audioAsset?.url}
+            />
+
+            {/* Text Overlay */}
+            {settings.text_overlay && (
+              <div className="absolute inset-x-0 bottom-20 px-6 z-20 pointer-events-none">
+                <p className={`text-xl text-center break-words ${textStyle?.className || ''}`}>
+                  {settings.text_overlay}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
