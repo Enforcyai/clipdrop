@@ -11,12 +11,21 @@
 }
 
 
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  height: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   -webkit-tap-highlight-color: transparent;
   scroll-behavior: smooth;
   user-select: none;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Allow selection for inputs */

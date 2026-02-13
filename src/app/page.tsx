@@ -32,8 +32,8 @@ export default function SplashPage() {
       <div className="relative z-10 w-full max-w-sm text-center space-y-8">
         {/* Logo */}
         <div className="space-y-4 animate-fade-in">
-          <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 flex items-center justify-center shadow-2xl shadow-purple-500/25">
-            <Video className="h-10 w-10 text-white" />
+          <div className="w-24 h-24 mx-auto rounded-[2rem] bg-gray-900 border border-gray-800 p-0.5 shadow-2xl shadow-purple-500/10 overflow-hidden">
+            <img src="/icon-512.png" alt="ClipDrop Logo" className="w-full h-full object-cover rounded-[1.9rem]" />
           </div>
           <div>
             <h1 className="text-4xl font-bold gradient-text">ClipDrop</h1>

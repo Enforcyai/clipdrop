@@ -23,20 +23,26 @@ export function BottomNav() {
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-lg transition-colors ${isActive ? 'text-purple-400' : 'text-gray-500 hover:text-gray-300'
+              className={`flex flex-col items-center gap-1.5 px-3 py-1 rounded-xl transition-all duration-300 ${isActive ? 'text-white' : 'text-gray-500 hover:text-gray-300'
                 }`}
             >
               {label === 'Create' ? (
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center -mt-2 ${isActive
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600'
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center -mt-6 shadow-xl transition-transform active:scale-95 ${isActive
+                    ? 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 shadow-purple-500/25 ring-2 ring-purple-500/20'
                     : 'bg-gray-800'
                   }`}>
-                  <Icon className="h-5 w-5 text-white" />
+                  <Icon className="h-6 w-6 text-white" />
                 </div>
               ) : (
-                <Icon className="h-5 w-5" />
+                <div className="relative">
+                  <Icon className={`h-6 w-6 transition-colors ${isActive ? 'text-purple-400' : ''}`} />
+                  {isActive && (
+                    <div className="absolute -inset-2 bg-purple-500/10 blur-lg rounded-full -z-10" />
+                  )}
+                </div>
               )}
-              <span className="text-[10px] font-medium">{label}</span>
+              <span className={`text-[10px] font-semibold tracking-wide transition-colors ${isActive ? 'text-purple-400' : 'text-gray-500'
+                }`}>{label}</span>
             </Link>
           )
         })}

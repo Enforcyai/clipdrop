@@ -48,27 +48,11 @@ export class MockAIProvider implements AIProvider {
     readonly name = 'mock'
 
     async startJob(request: GenerationRequest): Promise<JobStartResult> {
-        const jobId = generateMockId()
-        const generationDuration = 10000 + Math.random() * 10000 // 10-20 seconds
+        const startTime = Date.now()
+        const generationDuration = 15000 // Fixed 15s for consistency in mock
 
-        const job: MockJob = {
-            id: jobId,
-            request,
-            status: 'queued',
-            progress: 0,
-            startTime: Date.now(),
-            duration: generationDuration,
-        }
-
-        jobs.set(jobId, job)
-
-        // Simulate starting after a brief delay
-        setTimeout(() => {
-            const j = jobs.get(jobId)
-            if (j) {
-                j.status = 'running'
-            }
-        }, 500)
+        // Encode state into jobId: mock_v1_[startTime]_[duration]_[random]
+        const jobId = `mock_v1_${startTime}_${generationDuration}_${Math.random().toString(36).slice(2, 7)}`
 
         return {
             jobId,
@@ -77,42 +61,45 @@ export class MockAIProvider implements AIProvider {
     }
 
     async pollJob(jobId: string): Promise<JobPollResult> {
-        const job = jobs.get(jobId)
-
-        if (!job) {
+        // Parse state from jobId
+        const parts = jobId.split('_')
+        if (parts[0] !== 'mock' || parts[1] !== 'v1') {
             return {
                 status: 'failed',
                 progress: 0,
-                errorMessage: 'Job not found',
+                errorMessage: 'Invalid mock job ID',
             }
         }
 
-        const elapsed = Date.now() - job.startTime
-        const progress = Math.min(100, Math.round((elapsed / job.duration) * 100))
+        const startTime = parseInt(parts[2])
+        const duration = parseInt(parts[3])
+
+        if (isNaN(startTime) || isNaN(duration)) {
+            return {
+                status: 'failed',
+                progress: 0,
+                errorMessage: 'Job not found (invalid state)',
+            }
+        }
+
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(100, Math.round((elapsed / duration) * 100))
 
         if (progress >= 100) {
-            // Job complete — pick a random sample video
-            const videoUrl = SAMPLE_VIDEOS[Math.floor(Math.random() * SAMPLE_VIDEOS.length)]
-
-            job.status = 'succeeded'
-            job.progress = 100
-            const thumbnailUrl = SAMPLE_THUMBNAILS[Math.floor(Math.random() * SAMPLE_THUMBNAILS.length)]
-            job.outputVideoUrl = videoUrl
-            job.outputThumbnailUrl = thumbnailUrl
+            // Pick a deterministic sample based on startTime so it doesn't flip-flop
+            const videoIndex = startTime % SAMPLE_VIDEOS.length
+            const thumbIndex = startTime % SAMPLE_THUMBNAILS.length
 
             return {
                 status: 'succeeded',
                 progress: 100,
-                outputVideoUrl: videoUrl,
-                outputThumbnailUrl: job.outputThumbnailUrl,
+                outputVideoUrl: SAMPLE_VIDEOS[videoIndex],
+                outputThumbnailUrl: SAMPLE_THUMBNAILS[thumbIndex],
             }
         }
 
-        job.progress = progress
-        job.status = progress > 0 ? 'running' : 'queued'
-
         return {
-            status: job.status,
+            status: progress > 0 ? 'running' : 'queued',
             progress,
         }
     }
