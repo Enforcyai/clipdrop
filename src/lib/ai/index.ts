@@ -9,8 +9,8 @@
  */
 
 import { AIProvider } from './provider-interface'
-import { MockAIProvider } from './mock-provider'
 import { FalAIProvider } from './fal-provider'
+import { MockAIProvider } from './mock-provider'
 
 // Exported for use elsewhere
 export { checkPromptSafety } from './content-safety'
@@ -21,22 +21,16 @@ let providerInstance: AIProvider | null = null
 export function getProvider(): AIProvider {
     if (providerInstance) return providerInstance
 
-    const providerName = process.env.AI_PROVIDER || 'mock'
+    const providerType = process.env.AI_PROVIDER || 'mock'
 
-    switch (providerName) {
-        case 'fal':
-            if (!process.env.FAL_KEY) {
-                console.warn('FAL_KEY is not set. Falling back to mock.')
-                providerInstance = new MockAIProvider()
-            } else {
-                providerInstance = new FalAIProvider(process.env.FAL_KEY)
-            }
-            break
-        case 'mock':
-        default:
-            providerInstance = new MockAIProvider()
-            break
+    if (providerType === 'fal' && process.env.FAL_KEY) {
+        providerInstance = new FalAIProvider(process.env.FAL_KEY)
+    } else {
+        if (providerType === 'fal' && !process.env.FAL_KEY) {
+            console.warn('FAL_KEY is skip, falling back to MockAIProvider for development.')
+        }
+        providerInstance = new MockAIProvider()
     }
 
-    return providerInstance!
+    return providerInstance
 }

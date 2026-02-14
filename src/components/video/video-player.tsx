@@ -13,6 +13,8 @@ interface VideoPlayerProps {
   className?: string
   showControls?: boolean
   audioSrc?: string
+  overlayClassName?: string
+  volume?: number
 }
 
 export function VideoPlayer({
@@ -24,6 +26,8 @@ export function VideoPlayer({
   className,
   showControls = true,
   audioSrc,
+  overlayClassName,
+  volume = 1,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(autoPlay)
@@ -32,16 +36,35 @@ export function VideoPlayer({
   const [videoError, setVideoError] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
+  const [started, setStarted] = useState(false)
+
   useEffect(() => {
     if (audioSrc) {
       audioRef.current = new Audio(audioSrc)
       audioRef.current.loop = loop
+      audioRef.current.volume = volume // Apply volume
     }
     return () => {
       audioRef.current?.pause()
       audioRef.current = null
     }
   }, [audioSrc, loop])
+
+  // Update volume when prop changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume
+    }
+    if (videoRef.current) {
+      // If we have separate audio, we usually mute the video track, 
+      // but if volume is for video, we apply it here.
+      // For this app, video is muted if we have audioSrc? 
+      // Logic says: muted={muted}. 
+      // If we have audioSrc, we probably want video muted.
+      // But if no audioSrc, we might want video volume.
+      videoRef.current.volume = volume
+    }
+  }, [volume])
 
   useEffect(() => {
     const video = videoRef.current
@@ -57,7 +80,7 @@ export function VideoPlayer({
       setIsPlaying(true)
       if (audio) {
         audio.currentTime = video.currentTime
-        audio.play()
+        audio.play().catch(() => { /* mute/interrupt safety */ })
       }
     }
     const handlePause = () => {
@@ -91,7 +114,12 @@ export function VideoPlayer({
     if (isPlaying) {
       videoRef.current.pause()
     } else {
-      videoRef.current.play()
+      videoRef.current.play().catch(err => {
+        // Silency AbortError (interrupted by a new load request)
+        if (err.name !== 'AbortError') {
+          console.warn('Playback error:', err)
+        }
+      })
     }
   }
 
@@ -166,6 +194,11 @@ export function VideoPlayer({
         className="w-full h-full object-cover"
         onClick={togglePlay}
       />
+
+      {/* Visual Overlay Layer */}
+      {overlayClassName && (
+        <div className={cn("absolute inset-0 pointer-events-none z-10", overlayClassName)} />
+      )}
 
       {showControls && (
         <>

@@ -69,5 +69,12 @@ export default async function PublicPostPage({ params }: PageProps) {
     notFound()
   }
 
-  return <PublicPostView post={post} />
+  // Fetch music info if exists
+  const { data: music } = await supabase
+    .from('video_music')
+    .select('*')
+    .eq('generation_id', post.id)
+    .single()
+
+  return <PublicPostView post={post} music={music} />
 }

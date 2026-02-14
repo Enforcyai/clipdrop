@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { VideoPlayer } from '@/components/video/video-player'
 import { ShareSheet } from '@/components/share/share-sheet'
 import { Button } from '@/components/ui/button'
-import { Generation, Profile } from '@/types/database'
-import { Share2, Download, Video } from 'lucide-react'
+import { Generation, Profile, VideoMusic } from '@/types/database'
+import { Share2, Download, Video, Music, ExternalLink } from 'lucide-react'
 
 type PostWithProfile = Generation & {
   profiles: Partial<Profile> | null
@@ -14,9 +14,10 @@ type PostWithProfile = Generation & {
 
 interface PublicPostViewProps {
   post: PostWithProfile
+  music?: VideoMusic | null
 }
 
-export function PublicPostView({ post }: PublicPostViewProps) {
+export function PublicPostView({ post, music }: PublicPostViewProps) {
   const [showShareSheet, setShowShareSheet] = useState(false)
 
   const handleDownload = async () => {

@@ -18,7 +18,10 @@ import {
   EyeOff,
   Edit2,
   Trash2,
+  Music,
+  Loader2,
 } from 'lucide-react'
+import { useSpotifyAuth } from '@/lib/hooks/use-spotify-auth'
 
 type TabType = 'all' | 'published' | 'drafts'
 
@@ -207,13 +210,18 @@ export default function ProfilePage() {
                 </button>
               </div>
 
+              <div className="pt-2 border-t border-gray-800 space-y-3">
+                <h3 className="text-sm font-medium text-gray-300">Integrations</h3>
+                <SpotifyConnectButton />
+              </div>
+
               <button
                 onClick={() => {
                   if (confirm('Are you sure you want to delete your account? This cannot be undone.')) {
                     alert('Account deletion requires server-side implementation. Contact support.')
                   }
                 }}
-                className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+                className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors pt-2"
               >
                 <Trash2 className="h-4 w-4" />
                 Delete Account
@@ -302,5 +310,52 @@ export default function ProfilePage() {
         )}
       </div>
     </div>
+  )
+}
+
+function SpotifyConnectButton() {
+  const { isConnected, isLoading, spotifyUser, connect, disconnect } = useSpotifyAuth()
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-gray-400">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Checking connection...
+      </div>
+    )
+  }
+
+  if (isConnected) {
+    return (
+      <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[#1DB954] flex items-center justify-center text-black">
+            <Music className="h-4 w-4 fill-black" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white">Spotify Connected</p>
+            <p className="text-xs text-green-400 line-clamp-1">Ready to sync</p>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={disconnect}
+          className="text-gray-400 hover:text-white h-8 px-2"
+        >
+          Disconnect
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={connect}
+      className="w-full bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-95"
+    >
+      <Music className="h-5 w-5 fill-black" />
+      Connect Spotify
+    </button>
   )
 }

@@ -21,6 +21,8 @@ interface UseVideoRecorderReturn {
   cameraFacing: CameraFacing
   hasFlash: boolean
   flashEnabled: boolean
+  zoom: number
+  maxZoom: number
   error: string | null
   startCamera: () => Promise<void>
   stopCamera: () => void
@@ -28,6 +30,7 @@ interface UseVideoRecorderReturn {
   stopRecording: () => void
   flipCamera: () => Promise<void>
   toggleFlash: () => void
+  setZoom: (value: number) => Promise<void>
   reset: () => void
 }
 
@@ -50,6 +53,8 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
   const [cameraFacing, setCameraFacing] = useState<CameraFacing>('environment')
   const [hasFlash, setHasFlash] = useState(false)
   const [flashEnabled, setFlashEnabled] = useState(false)
+  const [zoom, setZoomValue] = useState(1)
+  const [maxZoom, setMaxZoom] = useState(1)
   const [error, setError] = useState<string | null>(null)
 
   // Cleanup on unmount
@@ -73,7 +78,7 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
   const startCamera = useCallback(async () => {
     try {
       setError(null)
-      
+
       // Stop any existing stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop())
@@ -82,8 +87,10 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: cameraFacing,
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
+          aspectRatio: { ideal: 0.5625 }, // 9:16
+          width: { ideal: 720 },
+          height: { ideal: 1280 },
+          frameRate: { ideal: 30 },
         },
         audio: true,
       }
@@ -93,14 +100,28 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
-        await videoRef.current.play()
+        // Wrap play in a try-catch to handle AbortError
+        try {
+          await videoRef.current.play()
+        } catch (err: any) {
+          if (err.name !== 'AbortError') throw err
+        }
       }
 
-      // Check for flash/torch support
+      // Check for capabilities (flash/torch and zoom)
       const videoTrack = stream.getVideoTracks()[0]
-      const capabilities = videoTrack.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean }
+      const capabilities = videoTrack.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean, zoom?: { min: number, max: number } }
       setHasFlash(capabilities?.torch === true)
-    } catch (err) {
+
+      if (capabilities?.zoom) {
+        setMaxZoom(capabilities.zoom.max)
+        setZoomValue(capabilities.zoom.min || 1)
+      } else {
+        setMaxZoom(1)
+        setZoomValue(1)
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
       const message = err instanceof Error ? err.message : 'Failed to access camera'
       setError(message)
       console.error('Camera error:', err)
@@ -130,8 +151,8 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
       const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
         ? 'video/webm;codecs=vp9'
         : MediaRecorder.isTypeSupported('video/webm')
-        ? 'video/webm'
-        : 'video/mp4'
+          ? 'video/webm'
+          : 'video/mp4'
 
       const mediaRecorder = new MediaRecorder(streamRef.current!, {
         mimeType,
@@ -175,12 +196,12 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
     if (withCountdown) {
       setState('countdown')
       setCountdown(3)
-      
+
       let count = 3
       countdownRef.current = setInterval(() => {
         count -= 1
         setCountdown(count)
-        
+
         if (count === 0) {
           if (countdownRef.current) {
             clearInterval(countdownRef.current)
@@ -208,16 +229,18 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
   const flipCamera = useCallback(async () => {
     const newFacing = cameraFacing === 'user' ? 'environment' : 'user'
     setCameraFacing(newFacing)
-    
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
-      
+
       try {
         const constraints: MediaStreamConstraints = {
           video: {
             facingMode: newFacing,
-            width: { ideal: 1080 },
-            height: { ideal: 1920 },
+            aspectRatio: { ideal: 0.5625 }, // 9:16
+            width: { ideal: 720 },
+            height: { ideal: 1280 },
+            frameRate: { ideal: 30 },
           },
           audio: true,
         }
@@ -227,15 +250,28 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream
-          await videoRef.current.play()
+          try {
+            await videoRef.current.play()
+          } catch (err: any) {
+            if (err.name !== 'AbortError') throw err
+          }
         }
 
-        // Check for flash support on new camera
+        // Check for capabilities on new camera
         const videoTrack = stream.getVideoTracks()[0]
-        const capabilities = videoTrack.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean }
+        const capabilities = videoTrack.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean, zoom?: { min: number, max: number } }
         setHasFlash(capabilities?.torch === true)
         setFlashEnabled(false)
-      } catch (err) {
+
+        if (capabilities?.zoom) {
+          setMaxZoom(capabilities.zoom.max)
+          setZoomValue(capabilities.zoom.min || 1)
+        } else {
+          setMaxZoom(1)
+          setZoomValue(1)
+        }
+      } catch (err: any) {
+        if (err.name === 'AbortError') return
         setError('Failed to switch camera')
         console.error('Camera switch error:', err)
       }
@@ -257,6 +293,20 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
       console.error('Flash toggle error:', err)
     }
   }, [hasFlash, flashEnabled])
+
+  const setZoom = useCallback(async (value: number) => {
+    if (!streamRef.current) return
+    const videoTrack = streamRef.current.getVideoTracks()[0]
+
+    try {
+      await videoTrack.applyConstraints({
+        advanced: [{ zoom: value } as any],
+      })
+      setZoomValue(value)
+    } catch (err) {
+      console.error('Zoom error:', err)
+    }
+  }, [])
 
   const reset = useCallback(() => {
     if (recordedUrl) {
@@ -280,6 +330,8 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
     cameraFacing,
     hasFlash,
     flashEnabled,
+    zoom,
+    maxZoom,
     error,
     startCamera,
     stopCamera,
@@ -287,6 +339,7 @@ export function useVideoRecorder(options: UseVideoRecorderOptions = {}): UseVide
     stopRecording,
     flipCamera,
     toggleFlash,
+    setZoom,
     reset,
   }
 }

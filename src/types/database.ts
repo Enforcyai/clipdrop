@@ -48,6 +48,104 @@ export type Database = {
         }
         Relationships: []
       }
+      spotify_connections: {
+        Row: {
+          user_id: string
+          spotify_user_id: string
+          refresh_token: string
+          scopes: string[] | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          spotify_user_id: string
+          refresh_token: string
+          scopes?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          spotify_user_id?: string
+          refresh_token?: string
+          scopes?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spotify_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      video_music: {
+        Row: {
+          id: string
+          user_id: string | null
+          generation_id: string | null
+          spotify_track_id: string
+          track_uri: string
+          track_name: string
+          artist_name: string
+          album_image_url: string | null
+          preview_url: string | null
+          start_ms: number
+          volume: number
+          mode: 'preview_overlay' | 'in_app_playback'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          generation_id?: string | null
+          spotify_track_id: string
+          track_uri: string
+          track_name: string
+          artist_name: string
+          album_image_url?: string | null
+          preview_url?: string | null
+          start_ms?: number
+          volume?: number
+          mode: 'preview_overlay' | 'in_app_playback'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          generation_id?: string | null
+          spotify_track_id?: string
+          track_uri?: string
+          track_name?: string
+          artist_name?: string
+          album_image_url?: string | null
+          preview_url?: string | null
+          start_ms?: number
+          volume?: number
+          mode?: 'preview_overlay' | 'in_app_playback'
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_music_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "generations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_music_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       generations: {
         Row: {
           id: string
@@ -336,6 +434,7 @@ export type Post = Database['public']['Tables']['posts']['Row']
 export type Like = Database['public']['Tables']['likes']['Row']
 export type Comment = Database['public']['Tables']['comments']['Row']
 export type Event = Database['public']['Tables']['events']['Row']
+export type VideoMusic = Database['public']['Tables']['video_music']['Row']
 
 export type VideoSettings = {
   duration: number

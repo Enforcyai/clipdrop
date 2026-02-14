@@ -78,38 +78,56 @@ export async function POST(request: Request) {
             .single()
 
         if (genError || !generation) {
-            return NextResponse.json({ error: 'Failed to create generation' }, { status: 500 })
+            console.error('Supabase generation insert error:', genError)
+            return NextResponse.json({ error: 'Failed to create generation record' }, { status: 500 })
         }
 
         // Start the AI job
         const provider = getProvider()
-        const jobResult = await provider.startJob({
-            mode: body.mode,
-            prompt: body.prompt,
-            duration: body.duration,
-            style: body.style,
-            aspectRatio: body.aspectRatio,
-            intensity: body.intensity,
-            templateId: body.templateId,
-            inputAssetUrl: body.inputAssetUrl,
-        })
-
-        // Update generation with provider job ID
-        await supabase
-            .from('generations')
-            .update({
-                provider_job_id: jobResult.jobId,
-                status: 'processing',
+        try {
+            const jobResult = await provider.startJob({
+                mode: body.mode,
+                prompt: body.prompt,
+                duration: body.duration,
+                style: body.style,
+                aspectRatio: body.aspectRatio,
+                intensity: body.intensity,
+                templateId: body.templateId,
+                inputAssetUrl: body.inputAssetUrl,
             })
-            .eq('id', generation.id)
 
-        return NextResponse.json({
-            generationId: generation.id,
-            jobId: jobResult.jobId,
-            estimatedSeconds: jobResult.estimatedSeconds,
-        })
+            // Update generation with provider job ID
+            await supabase
+                .from('generations')
+                .update({
+                    provider_job_id: jobResult.jobId,
+                    status: 'processing',
+                })
+                .eq('id', generation.id)
+
+            return NextResponse.json({
+                generationId: generation.id,
+                jobId: jobResult.jobId,
+                estimatedSeconds: jobResult.estimatedSeconds,
+            })
+        } catch (providerError) {
+            console.error('AI Provider startJob error:', providerError)
+            // Update generation to failed
+            await supabase
+                .from('generations')
+                .update({
+                    status: 'failed',
+                    error_message: providerError instanceof Error ? providerError.message : String(providerError),
+                })
+                .eq('id', generation.id)
+
+            return NextResponse.json({
+                error: 'AI service failed to start',
+                details: providerError instanceof Error ? providerError.message : String(providerError)
+            }, { status: 500 })
+        }
     } catch (error) {
-        console.error('Start generation error:', error)
+        console.error('Global start generation error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

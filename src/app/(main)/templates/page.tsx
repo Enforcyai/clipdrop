@@ -1,38 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
-import { Template } from '@/types/database'
-import { Search, Sparkles, Star } from 'lucide-react'
+import { FUNNY_TEMPLATES } from '@/lib/templates'
+import { Search, Sparkles, Play, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
-const CATEGORIES = ['All', 'Dance', 'Transitions', 'Anime', 'Cyber', 'Funny', 'Retro']
+const CATEGORIES = ['All', 'Funny', 'Reaction', 'Viral', 'Meme']
 
 export default function TemplatesPage() {
-    const [templates, setTemplates] = useState<Template[]>([])
-    const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [activeCategory, setActiveCategory] = useState('All')
 
-    useEffect(() => {
-        async function fetchTemplates() {
-            const supabase = createClient()
-            const { data, error } = await supabase
-                .from('templates')
-                .select('*')
-                .order('is_featured', { ascending: false })
-                .order('created_at', { ascending: false })
-
-            if (!error && data) {
-                setTemplates(data)
-            }
-            setLoading(false)
-        }
-        fetchTemplates()
-    }, [])
-
-    const filtered = templates.filter((t) => {
+    const filtered = FUNNY_TEMPLATES.filter((t) => {
         const matchesCategory = activeCategory === 'All' || t.category === activeCategory
         const matchesSearch =
             search === '' ||
@@ -42,34 +23,41 @@ export default function TemplatesPage() {
     })
 
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-black text-white">
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-black/90 backdrop-blur border-b border-gray-800">
-                <div className="p-4">
-                    <h1 className="text-xl font-bold gradient-text text-center mb-4">Templates</h1>
+            <div className="sticky top-0 z-20 bg-black/80 backdrop-blur-xl border-b border-white/10">
+                <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <h1 className="text-2xl font-black italic tracking-tighter uppercase text-white">
+                            Funny <span className="text-purple-500">Templates</span>
+                        </h1>
+                        <Sparkles className="h-6 w-6 text-purple-400 animate-pulse" />
+                    </div>
 
                     {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                    <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 group-focus-within:text-purple-400 transition-colors" />
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search templates..."
-                            className="pl-10"
+                            placeholder="Find something funny..."
+                            className="pl-12 bg-white/5 border-white/10 h-12 rounded-2xl focus:ring-purple-500/50"
                         />
                     </div>
                 </div>
 
-                {/* Category filter */}
-                <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
+                {/* Categories */}
+                <div className="flex gap-3 px-6 pb-4 overflow-x-auto no-scrollbar">
                     {CATEGORIES.map((cat) => (
                         <button
                             key={cat}
                             onClick={() => setActiveCategory(cat)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${activeCategory === cat
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                }`}
+                            className={cn(
+                                "px-6 py-2 rounded-2xl text-sm font-bold whitespace-nowrap transition-all duration-300 border",
+                                activeCategory === cat
+                                    ? "bg-purple-600 border-purple-400 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]"
+                                    : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+                            )}
                         >
                             {cat}
                         </button>
@@ -77,75 +65,57 @@ export default function TemplatesPage() {
                 </div>
             </div>
 
-            {/* Content */}
-            <div className="p-4">
-                {loading ? (
-                    <div className="grid grid-cols-2 gap-3">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="aspect-[3/4] rounded-xl skeleton" />
-                        ))}
-                    </div>
-                ) : filtered.length === 0 ? (
-                    <div className="text-center py-12">
-                        <Sparkles className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-                        <p className="text-gray-400">No templates found</p>
-                        <p className="text-sm text-gray-600 mt-1">Try a different search or category</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 gap-3">
-                        {filtered.map((template) => (
-                            <Link
-                                key={template.id}
-                                href={`/templates/${template.id}`}
-                                className="group relative rounded-xl overflow-hidden border border-gray-800 bg-gray-900/50 transition-all hover:border-gray-700 active:scale-[0.98]"
-                            >
-                                {/* Preview */}
-                                <div className="aspect-[3/4] bg-gradient-to-br from-gray-800 to-gray-900 relative">
-                                    {template.preview_url ? (
-                                        <img
-                                            src={template.preview_url}
-                                            alt={template.name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <Sparkles className="h-8 w-8 text-gray-600" />
-                                        </div>
-                                    )}
+            {/* Grid */}
+            <div className="p-4 sm:p-6 pb-24">
+                <div className="grid grid-cols-2 gap-4">
+                    {filtered.map((template) => (
+                        <Link
+                            key={template.id}
+                            href={`/templates/${template.id}`}
+                            className="group relative aspect-[9/16] rounded-3xl overflow-hidden bg-gray-900 border border-white/5 hover:border-purple-500/50 transition-all active:scale-[0.98]"
+                        >
+                            {/* Preview Image */}
+                            <img
+                                src={template.previewUrl}
+                                alt={template.name}
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            />
 
-                                    {/* Featured badge */}
-                                    {template.is_featured && (
-                                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-yellow-500/90 text-black text-xs font-bold px-2 py-0.5 rounded-full">
-                                            <Star className="h-3 w-3 fill-current" />
-                                            Featured
-                                        </div>
-                                    )}
+                            {/* Overlay Gradient */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-60" />
 
-                                    {/* Category badge */}
-                                    <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur text-white text-xs px-2 py-0.5 rounded-full">
-                                        {template.category}
+                            {/* Info */}
+                            <div className="absolute inset-x-0 bottom-0 p-4 space-y-2">
+                                <h3 className="font-bold text-sm leading-tight line-clamp-2">{template.name}</h3>
+
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-purple-600 rounded-full p-1.5 shadow-lg shadow-purple-900/40">
+                                        <Plus className="h-4 w-4 text-white" />
                                     </div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/70">Add Yourself</span>
                                 </div>
+                            </div>
 
-                                {/* Info */}
-                                <div className="p-3">
-                                    <h3 className="font-medium text-white text-sm truncate">{template.name}</h3>
-                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{template.description}</p>
+                            {/* Play Indicator */}
+                            <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Play className="h-4 w-4 text-white fill-white" />
+                            </div>
+                        </Link>
+                    ))}
+                </div>
 
-                                    {/* Tags */}
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                        {template.tags.slice(0, 3).map((tag) => (
-                                            <span
-                                                key={tag}
-                                                className="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded"
-                                            >
-                                                {tag}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
+                {filtered.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                        <div className="bg-white/5 rounded-full p-6 mb-4">
+                            <Sparkles className="h-10 w-10 text-gray-700" />
+                        </div>
+                        <p className="text-gray-400 font-medium">Nothing funny here... yet.</p>
+                        <button
+                            onClick={() => { setSearch(''); setActiveCategory('All') }}
+                            className="text-purple-400 text-sm mt-2 hover:underline"
+                        >
+                            Show all templates
+                        </button>
                     </div>
                 )}
             </div>

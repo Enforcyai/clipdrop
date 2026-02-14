@@ -37,6 +37,9 @@ export default function ResultPage() {
   const overlayAsset = OVERLAYS.find(o => o.id === settings.overlay_id)
   const textStyle = TEXT_STYLES.find(t => t.id === settings.text_style_id)
 
+  // Spotify/Music State
+  const [musicConfig, setMusicConfig] = useState<any>(null)
+
   useEffect(() => {
     async function fetchGeneration() {
       const supabase = createClient()
@@ -54,7 +57,19 @@ export default function ResultPage() {
       setGeneration(data)
       setCaption(data.caption || '')
       setHashtags(data.hashtags?.join(' ') || '')
+
       setLoading(false)
+
+      // Fetch music if exists
+      const { data: musicData } = await supabase
+        .from('video_music')
+        .select('*')
+        .eq('generation_id', data.id)
+        .single()
+
+      if (musicData) {
+        setMusicConfig(musicData)
+      }
     }
 
     fetchGeneration()
@@ -183,8 +198,20 @@ export default function ResultPage() {
               poster={generation.thumbnail_url || undefined}
               autoPlay
               className="w-full h-full"
-              audioSrc={audioAsset?.url}
+              audioSrc={musicConfig?.preview_url || audioAsset?.url}
+              overlayClassName={overlayAsset?.className}
+              volume={musicConfig?.volume || 1}
             />
+
+            {/* Spotify Overlay for In-App Playback */}
+            {musicConfig?.mode === 'in_app_playback' && (
+              <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-green-500/30">
+                <img src={musicConfig.album_image_url} className="w-4 h-4 rounded-full" />
+                <span className="text-[10px] text-green-400 font-medium max-w-[100px] truncate">
+                  {musicConfig.track_name}
+                </span>
+              </div>
+            )}
 
             {/* Text Overlay */}
             {settings.text_overlay && (

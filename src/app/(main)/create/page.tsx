@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { VideoRecorder } from '@/components/video/video-recorder'
@@ -15,6 +15,7 @@ import {
   Clock,
   Timer,
 } from 'lucide-react'
+import { AUDIOS, OVERLAYS } from '@/lib/creative-studio'
 
 type CreateMode = 'select' | 'record' | 'ai' | 'template' | 'remix'
 type Duration = 5 | 10 | 15 | 30
@@ -28,12 +29,28 @@ const DURATIONS: { value: Duration; label: string }[] = [
 
 export default function CreatePage() {
   const router = useRouter()
-  const [mode, setMode] = useState<CreateMode>('select')
+  const searchParams = useSearchParams()
+  const templateId = searchParams.get('templateId')
+
+  const [mode, setMode] = useState<CreateMode>(templateId ? 'record' : 'select')
   const [duration, setDuration] = useState<Duration>(15)
   const [useCountdown, setUseCountdown] = useState(true)
   const [uploading, setUploading] = useState(false)
 
-  const handleRecordingComplete = async (videoBlob: Blob, thumbnailBlob: Blob) => {
+  // Redirect if templateId is present but we are not in record mode
+  useEffect(() => {
+    if (templateId && mode !== 'record') {
+      setMode('record')
+    }
+  }, [templateId])
+
+  const handleRecordingComplete = async (
+    videoBlob: Blob,
+    thumbnailBlob: Blob,
+    finalAudioId: string,
+    finalOverlayId: string,
+    musicConfig?: { track: any, config: any }
+  ) => {
     setUploading(true)
 
     try {
@@ -83,15 +100,37 @@ export default function CreatePage() {
           status: 'succeeded',
           output_video_url: videoUrlData.publicUrl,
           thumbnail_url: thumbUrlData.publicUrl,
+          has_music: !!musicConfig,
           settings: {
             duration,
             camera: 'rear',
+            audio_id: finalAudioId,
+            overlay_id: finalOverlayId,
+            spotify_track: musicConfig ? musicConfig.track : undefined
           },
         })
         .select()
         .single()
 
       if (dbError) throw dbError
+
+      // Save Music Link if exists
+      if (musicConfig) {
+        const { track, config } = musicConfig
+        await supabase.from('video_music').insert({
+          user_id: user.id,
+          generation_id: generation.id,
+          spotify_track_id: track.id,
+          track_uri: track.uri,
+          track_name: track.name,
+          artist_name: track.artist,
+          album_image_url: track.image_url,
+          preview_url: track.preview_url,
+          start_ms: config.startMs,
+          volume: config.volume,
+          mode: config.mode
+        })
+      }
 
       // Navigate to result page
       router.push(`/create/result/${generation.id}`)
@@ -105,7 +144,7 @@ export default function CreatePage() {
 
   if (mode === 'record') {
     return (
-      <div className="fixed inset-0 bg-black z-50">
+      <div className="fixed inset-0 bg-black z-[60]">
         {uploading ? (
           <div className="flex flex-col items-center justify-center h-full">
             <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
@@ -115,6 +154,7 @@ export default function CreatePage() {
           <VideoRecorder
             maxDuration={duration}
             useCountdown={useCountdown}
+            templateId={templateId || undefined}
             onRecordingComplete={handleRecordingComplete}
             onCancel={() => setMode('select')}
           />
@@ -181,8 +221,8 @@ export default function CreatePage() {
                     key={d.value}
                     onClick={() => setDuration(d.value)}
                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${duration === d.value
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                       }`}
                   >
                     {d.label}
@@ -208,6 +248,7 @@ export default function CreatePage() {
                 />
               </button>
             </div>
+
           </CardContent>
         </Card>
       </div>
@@ -239,8 +280,8 @@ function ModeCard({
       onClick={onClick}
       disabled={disabled}
       className={`relative p-4 rounded-xl border border-gray-800 bg-gray-900/50 text-left transition-all ${disabled
-          ? 'opacity-50 cursor-not-allowed'
-          : 'hover:border-gray-700 hover:bg-gray-900 active:scale-98'
+        ? 'opacity-50 cursor-not-allowed'
+        : 'hover:border-gray-700 hover:bg-gray-900 active:scale-98'
         }`}
     >
       <div

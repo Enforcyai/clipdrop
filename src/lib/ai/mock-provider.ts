@@ -1,110 +1,40 @@
+import { AIProvider, GenerationRequest, JobStartResult, JobPollResult } from './provider-interface'
+
 /**
- * Mock AI Video Provider
- *
- * Simulates AI video generation by returning a sample video after a delay.
- * Replace this with a real provider implementation (Runway, Kling, etc.)
+ * Mock implementation of AIProvider for development.
+ * Simulates video generation with a delay and pre-defined output.
  */
-
-import { AIProvider, GenerationRequest, JobStartResult, JobPollResult, JobStatusType } from './provider-interface'
-
-// In-memory job store (in production, this would be in the database)
-interface MockJob {
-    id: string
-    request: GenerationRequest
-    status: JobStatusType
-    progress: number
-    startTime: number
-    duration: number // how long the mock "generation" takes in ms
-    outputVideoUrl?: string
-    outputThumbnailUrl?: string
-}
-
-const jobs = new Map<string, MockJob>()
-
-// Sample video URLs — hosted locally via /api/sample-video
-// In production, real AI providers (Runway, Kling) return actual video URLs
-const SAMPLE_VIDEOS = [
-    '/api/sample-video?v=0',
-    '/api/sample-video?v=1',
-    '/api/sample-video?v=2',
-    '/api/sample-video?v=3',
-    '/api/sample-video?v=4',
-]
-
-// Thumbnail images to use as poster frames
-const SAMPLE_THUMBNAILS = [
-    '/templates/hiphop.png',
-    '/templates/anime.png',
-    '/templates/cyber.png',
-    '/templates/retro.png',
-    '/templates/kpop.png',
-]
-
-function generateMockId(): string {
-    return `mock_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
-}
-
 export class MockAIProvider implements AIProvider {
     readonly name = 'mock'
 
     async startJob(request: GenerationRequest): Promise<JobStartResult> {
-        const startTime = Date.now()
-        const generationDuration = 15000 // Fixed 15s for consistency in mock
+        console.log('MockAIProvider: Starting job for prompt:', request.prompt)
 
-        // Encode state into jobId: mock_v1_[startTime]_[duration]_[random]
-        const jobId = `mock_v1_${startTime}_${generationDuration}_${Math.random().toString(36).slice(2, 7)}`
-
+        // Return a deterministic mock jobId
         return {
-            jobId,
-            estimatedSeconds: Math.round(generationDuration / 1000),
+            jobId: `mock_${Date.now()}`,
+            estimatedSeconds: 10
         }
     }
 
     async pollJob(jobId: string): Promise<JobPollResult> {
-        // Parse state from jobId
-        const parts = jobId.split('_')
-        if (parts[0] !== 'mock' || parts[1] !== 'v1') {
-            return {
-                status: 'failed',
-                progress: 0,
-                errorMessage: 'Invalid mock job ID',
-            }
-        }
+        console.log('MockAIProvider: Polling job:', jobId)
 
-        const startTime = parseInt(parts[2])
-        const duration = parseInt(parts[3])
+        // Simulate progress based on timestamp
+        const startTime = parseInt(jobId.split('_')[1])
+        const elapsed = (Date.now() - startTime) / 1000
 
-        if (isNaN(startTime) || isNaN(duration)) {
-            return {
-                status: 'failed',
-                progress: 0,
-                errorMessage: 'Job not found (invalid state)',
-            }
-        }
-
-        const elapsed = Date.now() - startTime
-        const progress = Math.min(100, Math.round((elapsed / duration) * 100))
-
-        if (progress >= 100) {
-            // Pick a deterministic sample based on startTime so it doesn't flip-flop
-            const videoIndex = startTime % SAMPLE_VIDEOS.length
-            const thumbIndex = startTime % SAMPLE_THUMBNAILS.length
-
+        if (elapsed >= 10) {
             return {
                 status: 'succeeded',
                 progress: 100,
-                outputVideoUrl: SAMPLE_VIDEOS[videoIndex],
-                outputThumbnailUrl: SAMPLE_THUMBNAILS[thumbIndex],
+                outputVideoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4'
             }
         }
 
         return {
-            status: progress > 0 ? 'running' : 'queued',
-            progress,
+            status: 'running',
+            progress: Math.min(Math.round((elapsed / 10) * 100), 99)
         }
-    }
-
-    async cancelJob(jobId: string): Promise<void> {
-        jobs.delete(jobId)
     }
 }

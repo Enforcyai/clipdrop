@@ -79,7 +79,34 @@ function AICreateContent() {
     const audioRef = useRef<HTMLAudioElement | null>(null)
 
     const [generating, setGenerating] = useState(false)
+    const [enhancing, setEnhancing] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
+    const handleEnhance = async () => {
+        if (!prompt.trim()) return
+        setEnhancing(true)
+        setError(null)
+
+        try {
+            const res = await fetch('/api/ai/enhance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt.trim() }),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to enhance prompt')
+            }
+
+            setPrompt(data.enhancedPrompt)
+        } catch (err: any) {
+            setError(err.message || 'Failed to enhance prompt. Check your API key.')
+        } finally {
+            setEnhancing(false)
+        }
+    }
 
     const toggleAudio = (url: string, id: string) => {
         if (playingAudio === id) {
@@ -250,219 +277,230 @@ function AICreateContent() {
                 )}
 
                 {/* Prompt */}
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-300">Prompt</label>
+                <div className="relative">
                     <textarea
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         placeholder="Describe the video you want to create..."
-                        rows={3}
+                        rows={4}
                         maxLength={1000}
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 resize-none"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 resize-none transition-all"
                     />
-                    <p className="text-xs text-gray-600 text-right">{prompt.length}/1000</p>
-                </div>
-
-                {/* Prompt helpers */}
-                <div className="space-y-2">
-                    <label className="text-xs font-medium text-gray-500">💡 Prompt Ideas</label>
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                        {(template?.prompt_suggestions || PROMPT_HELPERS).map((hint, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setPrompt(hint)}
-                                className="shrink-0 text-xs bg-gray-800 text-gray-400 px-3 py-1.5 rounded-full hover:bg-gray-700 hover:text-gray-300 transition-colors max-w-[200px] truncate"
-                            >
-                                {hint}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Duration */}
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-300">Duration</label>
-                    <div className="flex gap-2">
-                        {DURATIONS.map((d) => (
-                            <button
-                                key={d.value}
-                                onClick={() => setDuration(d.value)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${duration === d.value
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                    }`}
-                            >
-                                {d.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Style */}
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-300">Style</label>
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                        {STYLES.map((s) => (
-                            <button
-                                key={s.value}
-                                onClick={() => setStyle(s.value)}
-                                className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${style === s.value
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                    }`}
-                            >
-                                {s.emoji} {s.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Aspect Ratio */}
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-300">Aspect Ratio</label>
-                    <div className="flex gap-2">
-                        {RATIOS.map((r) => (
-                            <button
-                                key={r.value}
-                                onClick={() => setRatio(r.value)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${ratio === r.value
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                    }`}
-                            >
-                                {r.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Dynamic Intensity */}
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-300">Intensity</label>
-                    <div className="flex gap-2">
-                        {INTENSITIES.map((int) => (
-                            <button
-                                key={int.value}
-                                onClick={() => setIntensity(int.value)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${intensity === int.value
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                    }`}
-                            >
-                                {int.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Creative Studio Collapsible */}
-                <div className="pt-2">
                     <button
-                        onClick={() => setIsStudioOpen(!isStudioOpen)}
-                        className="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-900/40 to-pink-900/40 border border-purple-500/30 shadow-lg shadow-purple-500/5"
+                        onClick={handleEnhance}
+                        disabled={!prompt.trim() || enhancing}
+                        className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-800 disabled:text-gray-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg active:scale-95"
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                                <Sparkles className="h-5 w-5 text-purple-400" />
+                        {enhancing ? (
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <Sparkles className="h-3 w-3" />
+                        )}
+                        {enhancing ? 'Enhancing...' : 'Enhance'}
+                    </button>
+                </div>
+                <p className="text-[10px] text-gray-600 text-right pr-2">{prompt.length}/1000</p>
+            </div>
+
+            {/* Prompt helpers */}
+            <div className="space-y-2">
+                <label className="text-xs font-medium text-gray-500">💡 Prompt Ideas</label>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    {(template?.prompt_suggestions || PROMPT_HELPERS).map((hint, i) => (
+                        <button
+                            key={i}
+                            onClick={() => setPrompt(hint)}
+                            className="shrink-0 text-xs bg-gray-800 text-gray-400 px-3 py-1.5 rounded-full hover:bg-gray-700 hover:text-gray-300 transition-colors max-w-[200px] truncate"
+                        >
+                            {hint}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Duration */}
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-300">Duration</label>
+                <div className="flex gap-2">
+                    {DURATIONS.map((d) => (
+                        <button
+                            key={d.value}
+                            onClick={() => setDuration(d.value)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${duration === d.value
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                }`}
+                        >
+                            {d.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Style */}
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-300">Style</label>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                    {STYLES.map((s) => (
+                        <button
+                            key={s.value}
+                            onClick={() => setStyle(s.value)}
+                            className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${style === s.value
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                }`}
+                        >
+                            {s.emoji} {s.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Aspect Ratio */}
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-300">Aspect Ratio</label>
+                <div className="flex gap-2">
+                    {RATIOS.map((r) => (
+                        <button
+                            key={r.value}
+                            onClick={() => setRatio(r.value)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${ratio === r.value
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                }`}
+                        >
+                            {r.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Dynamic Intensity */}
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-300">Intensity</label>
+                <div className="flex gap-2">
+                    {INTENSITIES.map((int) => (
+                        <button
+                            key={int.value}
+                            onClick={() => setIntensity(int.value)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${intensity === int.value
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                }`}
+                        >
+                            {int.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Creative Studio Collapsible */}
+            <div className="pt-2">
+                <button
+                    onClick={() => setIsStudioOpen(!isStudioOpen)}
+                    className="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-900/40 to-pink-900/40 border border-purple-500/30 shadow-lg shadow-purple-500/5"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                            <Sparkles className="h-5 w-5 text-purple-400" />
+                        </div>
+                        <div className="text-left">
+                            <p className="text-sm font-bold text-white">Creative Studio</p>
+                            <p className="text-[10px] text-purple-300/70">Audio, Overlays & Elements</p>
+                        </div>
+                    </div>
+                    {isStudioOpen ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
+                </button>
+
+                {isStudioOpen && (
+                    <div className="mt-4 space-y-6 animate-slide-up p-1">
+                        {/* Audio Selection */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                                <Music className="h-4 w-4 text-pink-400" />
+                                <span>Soundtrack</span>
                             </div>
-                            <div className="text-left">
-                                <p className="text-sm font-bold text-white">Creative Studio</p>
-                                <p className="text-[10px] text-purple-300/70">Audio, Overlays & Elements</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {AUDIOS.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => setAudioId(item.id)}
+                                        className={`p-3 rounded-xl border transition-all cursor-pointer relative group ${audioId === item.id
+                                            ? 'border-purple-500 bg-purple-900/20'
+                                            : 'border-gray-800 bg-gray-900/40'
+                                            }`}
+                                    >
+                                        <div className="pr-8">
+                                            <p className="text-xs font-bold text-white truncate">{item.name}</p>
+                                            <p className="text-[10px] text-gray-500 truncate">{item.artist}</p>
+                                        </div>
+                                        {item.url && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); toggleAudio(item.url, item.id); }}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
+                                            >
+                                                {playingAudio === item.id ? <Pause className="h-3 w-3 text-white" /> : <Play className="h-3 w-3 text-white ml-0.5" />}
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        {isStudioOpen ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
-                    </button>
 
-                    {isStudioOpen && (
-                        <div className="mt-4 space-y-6 animate-slide-up p-1">
-                            {/* Audio Selection */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                    <Music className="h-4 w-4 text-pink-400" />
-                                    <span>Soundtrack</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {AUDIOS.map((item) => (
-                                        <div
-                                            key={item.id}
-                                            onClick={() => setAudioId(item.id)}
-                                            className={`p-3 rounded-xl border transition-all cursor-pointer relative group ${audioId === item.id
-                                                ? 'border-purple-500 bg-purple-900/20'
-                                                : 'border-gray-800 bg-gray-900/40'
-                                                }`}
-                                        >
-                                            <div className="pr-8">
-                                                <p className="text-xs font-bold text-white truncate">{item.name}</p>
-                                                <p className="text-[10px] text-gray-500 truncate">{item.artist}</p>
-                                            </div>
-                                            {item.url && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); toggleAudio(item.url, item.id); }}
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
-                                                >
-                                                    {playingAudio === item.id ? <Pause className="h-3 w-3 text-white" /> : <Play className="h-3 w-3 text-white ml-0.5" />}
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
+                        {/* Overlay Style */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                                <Layers className="h-4 w-4 text-blue-400" />
+                                <span>Visual Overlays</span>
                             </div>
+                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                                {OVERLAYS.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setOverlayId(item.id)}
+                                        className="shrink-0 space-y-2 group"
+                                    >
+                                        <div className={`w-16 h-20 rounded-xl border-2 transition-all overflow-hidden ${overlayId === item.id ? 'border-purple-500 scale-105 shadow-lg shadow-purple-500/20' : 'border-gray-800 hover:border-gray-700'
+                                            } ${item.previewColor}`}>
+                                            {item.id !== 'none' && <div className={`w-full h-full ${item.className} opacity-60`} />}
+                                        </div>
+                                        <p className={`text-[10px] font-medium transition-colors ${overlayId === item.id ? 'text-purple-400' : 'text-gray-500'}`}>
+                                            {item.name}
+                                        </p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                            {/* Overlay Style */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                    <Layers className="h-4 w-4 text-blue-400" />
-                                    <span>Visual Overlays</span>
-                                </div>
-                                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                                    {OVERLAYS.map((item) => (
+                        {/* Text Elements */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                                <TypeIcon className="h-4 w-4 text-green-400" />
+                                <span>Text Elements</span>
+                            </div>
+                            <Input
+                                placeholder="Enter overlay text..."
+                                value={textOverlay}
+                                onChange={(e) => setTextOverlay(e.target.value)}
+                                className="bg-gray-900/60 border-gray-800 focus:border-purple-500/50"
+                            />
+                            {textOverlay && (
+                                <div className="flex gap-2 overflow-x-auto no-scrollbar pt-1">
+                                    {TEXT_STYLES.map((item) => (
                                         <button
                                             key={item.id}
-                                            onClick={() => setOverlayId(item.id)}
-                                            className="shrink-0 space-y-2 group"
+                                            onClick={() => setTextStyleId(item.id)}
+                                            className={`shrink-0 px-3 py-1.5 rounded-lg border text-[10px] transition-all ${textStyleId === item.id ? 'border-purple-500 bg-purple-900/30' : 'border-gray-800 bg-gray-900 text-gray-500'
+                                                }`}
                                         >
-                                            <div className={`w-16 h-20 rounded-xl border-2 transition-all overflow-hidden ${overlayId === item.id ? 'border-purple-500 scale-105 shadow-lg shadow-purple-500/20' : 'border-gray-800 hover:border-gray-700'
-                                                } ${item.previewColor}`}>
-                                                {item.id !== 'none' && <div className={`w-full h-full ${item.className} opacity-60`} />}
-                                            </div>
-                                            <p className={`text-[10px] font-medium transition-colors ${overlayId === item.id ? 'text-purple-400' : 'text-gray-500'}`}>
-                                                {item.name}
-                                            </p>
+                                            {item.name}
                                         </button>
                                     ))}
                                 </div>
-                            </div>
-
-                            {/* Text Elements */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                    <TypeIcon className="h-4 w-4 text-green-400" />
-                                    <span>Text Elements</span>
-                                </div>
-                                <Input
-                                    placeholder="Enter overlay text..."
-                                    value={textOverlay}
-                                    onChange={(e) => setTextOverlay(e.target.value)}
-                                    className="bg-gray-900/60 border-gray-800 focus:border-purple-500/50"
-                                />
-                                {textOverlay && (
-                                    <div className="flex gap-2 overflow-x-auto no-scrollbar pt-1">
-                                        {TEXT_STYLES.map((item) => (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => setTextStyleId(item.id)}
-                                                className={`shrink-0 px-3 py-1.5 rounded-lg border text-[10px] transition-all ${textStyleId === item.id ? 'border-purple-500 bg-purple-900/30' : 'border-gray-800 bg-gray-900 text-gray-500'
-                                                    }`}
-                                            >
-                                                {item.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* Generate CTA - fixed bottom */}

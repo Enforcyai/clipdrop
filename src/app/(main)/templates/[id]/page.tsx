@@ -1,150 +1,107 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
-import { Template } from '@/types/database'
-import { ArrowLeft, Sparkles, Star, Clock, Zap } from 'lucide-react'
+import { FUNNY_TEMPLATES } from '@/lib/templates'
+import { ArrowLeft, Plus, Sparkles, Zap, Ghost } from 'lucide-react'
 
 export default function TemplateDetailPage() {
     const params = useParams()
     const router = useRouter()
-    const [template, setTemplate] = useState<Template | null>(null)
-    const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        async function fetchTemplate() {
-            const supabase = createClient()
-            const { data, error } = await supabase
-                .from('templates')
-                .select('*')
-                .eq('id', params.id as string)
-                .single()
+    const template = FUNNY_TEMPLATES.find(t => t.id === params.id)
 
-            if (error || !data) {
-                router.push('/templates')
-                return
-            }
-
-            setTemplate(data)
-            setLoading(false)
-        }
-        fetchTemplate()
-    }, [params.id, router])
-
-    if (loading) {
+    if (!template) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+                <Ghost className="h-12 w-12 text-gray-700 mb-4" />
+                <h1 className="text-xl font-bold mb-2">Template not found</h1>
+                <Button onClick={() => router.push('/templates')}>Go Back</Button>
             </div>
         )
     }
 
-    if (!template) return null
-
-    const settings = template.default_settings as Record<string, unknown>
-
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-black text-white">
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-black/90 backdrop-blur border-b border-gray-800">
+            <div className="sticky top-0 z-20 bg-black/80 backdrop-blur-xl border-b border-white/10">
                 <div className="flex items-center justify-between p-4">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                        <ArrowLeft className="h-5 w-5" />
+                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-white">
+                        <ArrowLeft className="h-6 w-6" />
                     </Button>
-                    <h1 className="font-semibold">Template</h1>
+                    <h1 className="font-black italic uppercase tracking-tight text-white/90">Preview</h1>
                     <div className="w-10" />
                 </div>
             </div>
 
-            {/* Preview */}
-            <div className="aspect-[9/16] max-h-[50vh] bg-gradient-to-br from-gray-800 to-gray-900 relative">
-                {template.preview_url ? (
-                    <img
-                        src={template.preview_url}
-                        alt={template.name}
-                        className="w-full h-full object-cover"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <Sparkles className="h-16 w-16 text-gray-600" />
+            {/* Video preview */}
+            <div className="relative aspect-[9/16] max-h-[70vh] w-full bg-gray-900 border-b border-white/10">
+                <video
+                    src={template.videoUrl}
+                    className="w-full h-full object-cover"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                />
+
+                {/* Composition hint overlay */}
+                <div className="absolute inset-x-0 bottom-0 p-8 pt-20 bg-gradient-to-t from-black via-black/40 to-transparent">
+                    <div className="flex items-center gap-4 animate-bounce">
+                        <div className="relative">
+                            <div className="w-12 h-12 rounded-full border-2 border-dashed border-purple-500 flex items-center justify-center">
+                                <Plus className="h-6 w-6 text-purple-400" />
+                            </div>
+                        </div>
+                        <p className="text-sm font-black italic uppercase tracking-wider text-purple-400">
+                            Your video goes here!
+                        </p>
                     </div>
-                )}
-                {template.is_featured && (
-                    <div className="absolute top-4 left-4 flex items-center gap-1 bg-yellow-500/90 text-black text-sm font-bold px-3 py-1 rounded-full">
-                        <Star className="h-4 w-4 fill-current" />
-                        Featured
-                    </div>
-                )}
+                </div>
             </div>
 
-            {/* Info */}
-            <div className="p-4 space-y-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-white">{template.name}</h2>
-                    <p className="text-gray-400 mt-1">{template.description}</p>
-                </div>
-
-                {/* Meta */}
-                <div className="flex gap-4">
-                    <div className="flex items-center gap-1.5 text-sm text-gray-400">
-                        <Clock className="h-4 w-4" />
-                        {(settings?.duration as number) || 10}s
-                    </div>
-                    <div className="flex items-center gap-1.5 text-sm text-gray-400">
-                        <Zap className="h-4 w-4" />
-                        {(settings?.intensity as string) || 'medium'}
-                    </div>
-                    <div className="bg-gray-800 text-gray-300 text-sm px-3 py-0.5 rounded-full">
-                        {template.category}
-                    </div>
-                </div>
-
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2">
-                    {template.tags.map((tag) => (
-                        <span
-                            key={tag}
-                            className="text-sm bg-gray-800 text-purple-400 px-3 py-1 rounded-full"
-                        >
-                            #{tag}
+            {/* Info Section */}
+            <div className="p-6 space-y-8">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <span className="bg-purple-600/20 text-purple-400 text-[10px] font-black uppercase px-2 py-1 rounded-md border border-purple-500/30">
+                            {template.category}
                         </span>
-                    ))}
+                        {template.tags.map(tag => (
+                            <span key={tag} className="text-gray-500 text-[10px] font-bold uppercase">#{tag}</span>
+                        ))}
+                    </div>
+                    <h2 className="text-3xl font-black italic uppercase tracking-tighter">{template.name}</h2>
+                    <p className="text-gray-400 text-sm font-medium leading-relaxed">{template.description}</p>
                 </div>
 
-                {/* Prompt suggestions */}
-                {template.prompt_suggestions && template.prompt_suggestions.length > 0 && (
-                    <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-gray-300">Suggested Prompts</h3>
-                        <div className="space-y-2">
-                            {template.prompt_suggestions.map((prompt, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => {
-                                        router.push(
-                                            `/create/ai?templateId=${template.id}&prompt=${encodeURIComponent(prompt)}`
-                                        )
-                                    }}
-                                    className="w-full text-left p-3 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-purple-600/50 transition-colors"
-                                >
-                                    <p className="text-sm text-gray-300">"{prompt}"</p>
-                                </button>
-                            ))}
-                        </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+                        <Zap className="h-5 w-5 text-yellow-500" />
+                        <span className="text-xs font-bold text-gray-500 uppercase">Style</span>
+                        <span className="text-sm font-bold">{template.compositionType === 'pip' ? 'Side-by-Side' : 'Full Overlap'}</span>
                     </div>
-                )}
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+                        <Sparkles className="h-5 w-5 text-purple-500" />
+                        <span className="text-xs font-bold text-gray-500 uppercase">Difficulty</span>
+                        <span className="text-sm font-bold">Very Easy</span>
+                    </div>
+                </div>
 
                 {/* CTA */}
-                <Button
-                    variant="primary"
-                    size="lg"
-                    className="w-full"
-                    onClick={() => router.push(`/create/ai?templateId=${template.id}`)}
-                >
-                    <Sparkles className="h-5 w-5 mr-2" />
-                    Use This Template
-                </Button>
+                <div className="space-y-4 pt-4 pb-12">
+                    <Button
+                        size="lg"
+                        className="w-full h-16 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-black italic uppercase tracking-widest text-lg shadow-[0_0_30px_rgba(168,85,247,0.3)] group transition-all"
+                        onClick={() => router.push(`/create?templateId=${template.id}`)}
+                    >
+                        <Plus className="h-6 w-6 mr-3 group-hover:rotate-90 transition-transform" />
+                        Add Yourself
+                    </Button>
+                    <p className="text-center text-[10px] font-bold uppercase text-gray-600 tracking-widest">
+                        Join the viral wave in seconds
+                    </p>
+                </div>
             </div>
         </div>
     )

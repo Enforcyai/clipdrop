@@ -52,7 +52,7 @@ export async function middleware(request: NextRequest) {
 
   if (isAuthPath && user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/feed'
+    url.pathname = '/create'
     return NextResponse.redirect(url)
   }
 
