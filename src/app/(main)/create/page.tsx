@@ -27,7 +27,9 @@ const DURATIONS: { value: Duration; label: string }[] = [
   { value: 30, label: '30s' },
 ]
 
-export default function CreatePage() {
+import { Suspense } from 'react'
+
+function CreatePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const templateId = searchParams.get('templateId')
@@ -297,5 +299,13 @@ function ModeCard({
         </span>
       )}
     </button>
+  )
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-black"><div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>}>
+      <CreatePageContent />
+    </Suspense>
   )
 }
